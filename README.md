@@ -16,7 +16,7 @@ Workshop slides are available from the links below:
 
 ## How to get the workshop materials: 
 
-- Users new to R and RStudio should use the pre-built Posit Cloud environment available at
+- Users new to R and RStudio should use the pre-built Posit Cloud environment available at https://posit.cloud/content/9689451.
 
 - Advanced users familiar with R and RStudio should clone the repository to their computers with the command `git clone https://github.com/walkerke/umich-workshop-2025.git`.  They should then install the following R packages, if not already installed:
 
