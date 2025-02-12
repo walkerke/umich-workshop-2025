@@ -1,0 +1,984 @@
+---
+title: "Working with Decennial Census Data in R"
+subtitle: "2025 SSDAN Webinar Series"
+author: "Kyle Walker"
+date: February 12, 2025
+lightbox: true
+format: 
+  revealjs: 
+    theme: [default, custom.scss]
+    embed-resources: true
+    logo: img/logo.png
+execute: 
+  echo: true
+---
+```{r setup, include = FALSE}
+library(tidycensus)
+options(tigris_use_cache = TRUE)
+```
+
+
+## About me
+
+* Professor of Geography at TCU 
+
+* Spatial data science researcher and consultant
+
+* Package developer: __tidycensus__, __tigris__, __mapgl__, __mapboxapi__, __crsuggest__, __idbr__ (R), __pygris__ (Python)
+
+* Book: [_Analyzing US Census Data: Methods, Maps and Models in R_](https://walker-data.com/census-r/)
+
+
+## SSDAN webinar series
+
+* Wednesday, February 5: [Analyzing Data from the 2023 American Community Survey in R](https://walker-data.com/umich-workshop-2025/acs-2023/)
+
+* __Today: Working with Decennial Census Data in R__
+
+* Wednesday, February 26: Mapping and Spatial Analysis with US Census Data in R
+
+## Today's agenda
+
+* Hour 1: Getting started with 2020 Decennial US Census data in R
+
+* Hour 2: Analysis workflows with 2020 Census data
+
+* Hour 3: The detailed DHC data files and time-series analysis
+
+# Getting started with 2020 Decennial US Census data in R
+
+## R and RStudio
+
+* R: programming language and software environment for data analysis (and wherever else your imagination can take you!)
+
+* RStudio: integrated development environment (IDE) for R developed by [Posit](https://posit.co/)
+
+* Posit Cloud: run RStudio with today's workshop pre-configured at <https://posit.cloud/content/7549022>
+
+## What is the decennial US Census?
+
+* Complete count of the US population mandated by Article 1, Sections 2 and 9 in the US Constitution
+
+* Directed by the US Census Bureau (US Department of Commerce); conducted every 10 years since 1790
+
+* Used for proportional representation / congressional redistricting
+
+* Limited set of questions asked about race, ethnicity, age, sex, and housing tenure
+
+## The 2020 US Census: available datasets
+
+Available datasets from the 2020 US Census include: 
+
+::: {.incremental}
+
+* The PL 94-171 Redistricting Data
+* The Demographic and Housing Characteristics (DHC) file
+* The Demographic Profile (for pre-tabulated variables)
+* Tabulations for the 118th Congress & for Island Areas
+* The Detailed DHC-A file (with very detailed racial & ethnic categories)
+* The Detailed DHC-B file (with housing characteristics for those detailed categories)
+
+:::
+
+## How to get decennial Census data
+
+* [data.census.gov](https://data.census.gov) is the main, revamped interactive data portal for browsing and downloading Census datasets
+
+* [The US Census **A**pplication **P**rogramming **I**nterface (API)](https://www.census.gov/data/developers/data-sets.html) allows developers to access Census data resources programmatically
+
+## tidycensus
+
+:::: {.columns}
+
+::: {.column width="70%"}
+
+* R interface to the Decennial Census, American Community Survey, Population Estimates Program, and Public Use Microdata Series APIs
+
+* First released in 2017; over 600,000 downloads from the Posit CRAN mirror
+
+:::
+
+::: {.column width="30%"}
+
+![](https://walker-data.com/tidycensus/logo.png)
+
+:::
+
+::::
+
+## tidycensus: key features
+
+::: {.incremental}
+
+- Wrangles Census data internally to return tidyverse-ready format (or traditional wide format if requested);
+
+- Automatically downloads and merges Census geometries to data for mapping; 
+
+- Includes a variety of analytic tools to support common Census workflows;
+
+- States and counties can be requested by name (no more looking up FIPS codes!)
+  
+:::
+
+## Getting started with tidycensus
+
+* To get started, install the packages you'll need for today's workshop
+
+* If you are using the Posit Cloud environment, these packages are already installed for you
+
+```{r install-packages, eval = FALSE}
+install.packages(c("tidycensus", "tidyverse", "mapview"))
+```
+
+## Optional: your Census API key
+
+* tidycensus (and the Census API) can be used without an API key, but you will be limited to 500 queries per day
+
+* Power users: visit <https://api.census.gov/data/key_signup.html> to request a key, then activate the key from the link in your email. 
+
+* Once activated, use the `census_api_key()` function to set your key as an environment variable
+
+```{r api-key, eval = FALSE}
+library(tidycensus)
+
+census_api_key("YOUR KEY GOES HERE", install = TRUE)
+```
+
+# Getting started with Census data in tidycensus
+
+
+## 2020 Census data in tidycensus
+
+* The `get_decennial()` function is used to acquire data from the decennial US Census
+
+* The two required arguments are `geography` and `variables` for the functions to work; for 2020 Census data, use `year = 2020`.  
+
+```{r decennial}
+pop20 <- get_decennial(
+  geography = "state",
+  variables = "P1_001N",
+  year = 2020
+)
+```
+
+---
+
+* Decennial Census data are returned with four columns: `GEOID`, `NAME`, `variable`, and `value`
+
+```{r view-decennial}
+pop20
+```
+
+---
+
+## Understanding the printed messages
+
+* When we run `get_decennial()` for the 2020 Census for the first time, we see the following messages:
+
+```
+Getting data from the 2020 decennial Census
+Using the PL 94-171 Redistricting Data summary file
+Note: 2020 decennial Census data use differential privacy, a technique that
+introduces errors into data to preserve respondent confidentiality.
+ℹ Small counts should be interpreted with caution.
+ℹ See https://www.census.gov/library/fact-sheets/2021/protecting-the-confidentiality-of-the-2020-census-redistricting-data.html for additional guidance.
+This message is displayed once per session.
+```
+
+---
+
+## Understanding the printed messages
+
+* The Census Bureau is using _differential privacy_ in an attempt to preserve respondent confidentiality in the 2020 Census data, which is required under US Code Title 13
+
+* Intentional errors are introduced into data, impacting the accuracy of small area counts (e.g. some blocks with children, but no adults)
+
+* Advocates argue that differential privacy is necessary to satisfy Title 13 requirements given modern database reconstruction technologies; critics contend that the method makes data less useful with no tangible privacy benefit
+
+
+## Requesting tables of variables
+
+* The `table` parameter can be used to obtain all related variables in a "table" at once
+
+```{r census-table}
+#| code-line-numbers: "|3"
+
+table_p2 <- get_decennial(
+  geography = "state", 
+  table = "P2", 
+  year = 2020
+)
+```
+
+---
+
+```{r view-table}
+table_p2
+```
+
+---
+class: middle, center, inverse
+
+## Understanding geography and variables in tidycensus
+
+---
+
+## US Census Geography
+
+![Source: US Census Bureau](img/census_diagram.png)
+
+---
+
+## Geography in tidycensus
+
+* Information on available geographies, and how to specify them, can be found [in the tidycensus documentation](https://walker-data.com/tidycensus/articles/basic-usage.html#geography-in-tidycensus-1)
+
+* The 2020 Census allows you to get data down to the Census block (unlike the ACS, covered last week)
+
+![](img/tidycensus_geographies.png){width: 400}
+
+
+---
+
+## Querying by state
+
+* For geographies available below the state level, the `state` parameter allows you to query data for a specific state
+
+* __tidycensus__ translates state names and postal abbreviations internally, so you don't need to remember the FIPS codes!
+
+* Example: total population in Missouri by county
+
+---
+
+```{r query-by-state}
+#| code-line-numbers: "|4"
+
+mo_population <- get_decennial(
+  geography = "county",
+  variables = "P1_001N",
+  state = "MO",
+  sumfile = "dhc",
+  year = 2020
+)
+```
+
+---
+
+```{r show-query-by-state}
+mo_population
+```
+
+## Querying by state and county
+
+* County names are also translated internally by __tidycensus__ for sub-county queries, e.g. for Census tracts, block groups, and blocks
+
+```{r query-by-county}
+#| code-line-numbers: "|5"
+
+stl_blocks <- get_decennial(
+  geography = "block",
+  variables = "P1_001N",
+  state = "MO",
+  county = "St. Louis city",
+  sumfile = "dhc",
+  year = 2020
+)
+```
+
+---
+
+```{r show-query-by-county}
+stl_blocks
+```
+
+
+---
+
+## Searching for variables
+
+* To search for variables, use the `load_variables()` function along with a year and dataset
+
+* The `View()` function in RStudio allows for interactive browsing and filtering
+
+```{r search-variables, eval = FALSE}
+vars <- load_variables(2020, "dhc")
+
+View(vars)
+
+```
+
+## Available decennial Census datasets in tidycensus
+
+The different datasets in the 2020 Census are accessible by specifying a `sumfile` in `get_decennial()`.  The datasets we'll cover today include (besides the default PL 94-171 Redistricting Data): 
+
+::: {.incremental}
+
+* The DHC data (`sumfile = "dhc"`)
+* The Demographic Profile (`sumfile = "dp"`)
+* The CD118 data (`sumfile = "cd118`)
+* The Detailed DHC-A data (`sumfile = "ddhca"`)
+* The Detailed DHC-B data (`sumfile = "ddhcb"`)
+
+:::
+
+
+# Data structure in tidycensus
+
+
+## "Tidy" or long-form data
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+* The default data structure returned by __tidycensus__ is "tidy" or long-form data, with variables by geography stacked by row
+
+:::
+
+::: {.column width="60%"}
+
+
+```{r tidy-data}
+single_year_age <- get_decennial(
+  geography = "state",
+  table = "PCT12",
+  year = 2020,
+  sumfile = "dhc"
+)
+
+```
+
+:::
+
+::::
+
+---
+
+```{r show-tidy-data}
+single_year_age
+```
+
+
+
+## "Wide" data 
+
+:::: {.columns}
+
+::: {.column width="40%"}
+
+* The argument `output = "wide"` spreads Census variables across the columns, returning one row per geographic unit and one column per variable
+
+:::
+
+::: {.column width="60%"}
+
+```{r wide-data}
+#| code-line-numbers: "|6"
+
+single_year_age_wide <- get_decennial(
+  geography = "state",
+  table = "PCT12",
+  year = 2020,
+  sumfile = "dhc",
+  output = "wide" 
+)
+```
+
+:::
+
+::::
+
+
+---
+
+```{r show-wide-data}
+single_year_age_wide
+```
+
+
+
+## Using named vectors of variables
+
+
+* Census variables can be hard to remember; using a named vector to request variables will replace the Census IDs with a custom input
+
+* In long form, these custom inputs will populate the `variable` column; in wide form, they will replace the column names
+
+---
+
+```{r named-variables}
+#| code-line-numbers: "|4|5"
+
+fl_samesex <- get_decennial(
+  geography = "county",
+  state = "FL",
+  variables = c(married = "DP1_0116P",
+                partnered = "DP1_0118P"),
+  year = 2020,
+  sumfile = "dp",
+  output = "wide"
+)
+```
+
+
+---
+
+```{r show-named-variables}
+fl_samesex
+```
+
+
+---
+
+## Part 1 exercises
+
+1. Use `load_variables(2020, "dhc")` to find a variable that interests you from the Demographic and Housing Characteristics file.
+
+2. Use `get_decennial()` to fetch data on that variable from the decennial US Census for counties in a state of your choosing.
+
+# Part 2: Analysis workflows with 2020 Census data
+
+## The tidyverse
+
+```{r tidyverse}
+library(tidyverse)
+
+tidyverse_logo()
+```
+
+* The [tidyverse](https://tidyverse.tidyverse.org/index.html): an integrated set of packages developed primarily by Hadley Wickham and the Posit team
+
+## tidycensus and the tidyverse
+
+* Census data are commonly used in _wide_ format, with categories spread across the columns
+
+* tidyverse tools work better with [data that are in "tidy", or _long_ format](https://vita.had.co.nz/papers/tidy-data.pdf); this format is returned by tidycensus by default
+
+* Goal: return data "ready to go" for use with tidyverse tools
+
+# Exploring 2020 Census data with tidyverse tools
+
+## Finding the largest values
+
+* dplyr's `arrange()` function sorts data based on values in one or more columns, and `filter()` helps you query data based on column values
+
+* Example: what are the largest and smallest counties in Missouri by population?
+
+```{r mo-population}
+library(tidycensus)
+library(tidyverse)
+
+mo_population <- get_decennial(
+  geography = "county",
+  variables = "P1_001N",
+  year = 2020,
+  state = "MO",
+  sumfile = "dhc"
+)
+
+```
+
+---
+
+```{r sort-ascending}
+arrange(mo_population, value)
+
+```
+
+---
+
+```{r sort-descending}
+arrange(mo_population, desc(value))
+```
+
+---
+
+## What are the counties with a population below 5,000?
+
+* The `filter()` function subsets data according to a specified condition, much like a SQL query
+
+```{r filter-below-1000}
+below1000 <- filter(mo_population, value < 1000)
+
+below1000
+```
+
+## Using summary variables
+
+* Many decennial Census and ACS variables are organized in tables in which the first variable represents a _summary variable_, or denominator for the others
+
+* The parameter `summary_var` can be used to generate a new column in long-form data for a requested denominator, which works well for normalizing estimates
+
+## Using summary variables
+
+```{r summary-variable}
+#| code-line-numbers: "|13|15"
+
+race_vars <- c(
+  Hispanic = "P5_010N",
+  White = "P5_003N",
+  Black = "P5_004N",
+  Native = "P5_005N",
+  Asian = "P5_006N",
+  HIPI = "P5_007N"
+)
+
+cbsa_race <- get_decennial(
+  geography = "cbsa",
+  variables = race_vars,
+  summary_var = "P5_001N", 
+  year = 2020,
+  sumfile = "dhc"
+)
+```
+
+---
+
+```{r view-summary-variable}
+cbsa_race
+```
+
+---
+
+## Normalizing columns with `mutate()`
+
+* dplyr's `mutate()` function is used to calculate new columns in your data; the `select()` column can keep or drop columns by name
+
+* In a tidyverse workflow, these steps are commonly linked using the pipe operator (`%>%`) from the magrittr package
+
+```{r mutate-and-select}
+#| code-line-numbers: "|2|3"
+
+cbsa_race_percent <- cbsa_race %>%
+  mutate(percent = 100 * (value / summary_value)) %>% 
+  select(NAME, variable, percent) 
+```
+
+
+---
+
+```{r view-percent}
+cbsa_race_percent
+```
+
+---
+class: middle, center, inverse
+
+## Group-wise Census data analysis
+
+---
+
+## Group-wise Census data analysis
+
+* The `group_by()` and `summarize()` functions in dplyr are used to implement the split-apply-combine method of data analysis
+
+* The default "tidy" format returned by tidycensus is designed to work well with group-wise Census data analysis workflows
+
+---
+
+## What is the largest group by CBSA?
+
+```{r largest-group}
+#| code-line-numbers: "|2|3"
+
+largest_group <- cbsa_race_percent %>%
+  group_by(NAME) %>% 
+  filter(percent == max(percent)) 
+
+# Optionally, use `.by`: 
+# largest_group <- cbsa_race_percent %>%
+#   filter(percent == max(percent), .by = NAME) 
+```
+
+---
+
+```{r view-largest-group}
+largest_group
+```
+
+---
+
+## What are the median percentages by group?
+
+```{r median-by-group}
+#| code-line-numbers: "|2|3"
+
+cbsa_race_percent %>%
+  group_by(variable) %>% 
+  summarize(median_pct = median(percent, na.rm = TRUE)) 
+```
+
+
+# Exploring maps of Census data
+
+## "Spatial" Census data
+
+* One of the best features of tidycensus is the argument `geometry = TRUE`, which gets you the correct Census geometries with no hassle
+
+* `get_decennial()` with `geometry = TRUE` returns a _spatial_ Census dataset containing _simple feature geometries_; learn more on February 26
+
+* Let's take a look at some examples
+
+## "Spatial" Census data
+
+* `geometry = TRUE` does the hard work for you of acquiring and pre-joining spatial Census data
+
+* Consider using the Demographic Profile for pre-tabulated percentages
+
+```{r}
+#| code-line-numbers: "|7"
+
+wv_over_65 <- get_decennial(
+  geography = "tract",
+  variables = "DP1_0024P",
+  state = "WV",
+  geometry = TRUE,
+  sumfile = "dp",
+  year = 2020
+)
+
+```
+
+---
+
+* We get back a _simple features data frame_ (more about this on February 26)
+
+```{r}
+wv_over_65
+```
+
+## Exploring spatial data
+
+* Mapping, GIS, and spatial data is the subject of our February 26 workshop - so be sure to check that out!
+
+* Even before we dive deeper into spatial data, it is _very_ useful to be able to explore your results on an interactive map
+
+* Our solution: `mapview()`
+
+## Exploring spatial data
+
+```{r}
+library(mapview)
+
+mapview(wv_over_65)
+```
+
+## Creating a shaded map with `zcol`
+
+```{r}
+mapview(wv_over_65, zcol = "value")
+```
+
+## Customizing your mapview output
+
+```{r}
+#| code-line-numbers: "|2"
+
+mapview(wv_over_65, zcol = "value",
+        layer.name = "% age 65 and up<br>Census tracts in Iowa")
+
+```
+
+
+## Customizing your mapview output
+
+```{r}
+#| code-line-numbers: "|5"
+
+library(viridisLite)
+
+mapview(wv_over_65, zcol = "value",
+        layer.name = "% age 65 and up<br>Census tracts in W. Virginia",
+        col.regions = inferno(100))
+```
+
+
+## Saving and using interactive maps
+
+Use the `saveWidget()` function over the `map` slot of your mapview map to save out a standalone HTML file, which you can embed in websites
+
+```{r}
+#| eval: false
+
+library(htmlwidgets)
+
+m1 <- mapview(wv_over_65, zcol = "value",
+        layer.name = "% age 65 and up<br>Census tracts in W. Virginia",
+        col.regions = inferno(100))
+
+saveWidget(m1@map, "wv_over_65.html")
+
+```
+
+
+## Part 2 exercise
+
+* Try making an interactive map of a different variable from the Demographic Profile (use `load_variables(2020, "dp")` to look them up) for a different state, or state / county combination.  
+
+# Part 3: The Detailed DHC-A File and time-series analysis
+
+# The 2020 Decennial Census Detailed DHC-A File
+
+## The Detailed DHC-A File
+
+* Tabulation of 2020 Decennial Census results for population by sex and age
+
+* Key feature: break-outs for thousands of racial and ethnic groups
+
+## Limitations of the DDHC-A File
+
+* An "adaptive design" is used, meaning that data for different groups / geographies may be found in different tables
+
+* There is considerable sparsity in the data, especially when going down to the Census tract level
+  
+## Using the DDHC-A File in tidycensus
+
+* You'll query the DDHC-A file with the argument `sumfile = "ddhca"` in `get_decennial()`
+
+* A new argument, `pop_group`, is required to use the DDHC-A; it takes a population group code. 
+
+* Use `pop_group = "all"` to query for all groups; set `pop_group_label = TRUE` to return the label for the population group
+
+* Look up variables with `load_variables(2020, "ddhca")`
+
+## Example usage of the DDHC-A File
+
+```{r ddhca-example}
+#| code-line-numbers: "|3|6|7|8"
+
+mn_population_groups <- get_decennial(
+  geography = "state",
+  variables = "T01001_001N",
+  state = "MN",
+  year = 2020,
+  sumfile = "ddhca",
+  pop_group = "all",
+  pop_group_label = TRUE
+)
+
+```
+
+---
+
+```{r}
+mn_population_groups
+```
+
+
+
+## Looking up group codes
+
+* The `get_pop_groups()`, helps you look up population group codes
+
+* It works for SF2/SF4 in 2000 and SF2 in 2010 as well!
+
+```{r}
+available_groups <- get_pop_groups(2020, "ddhca")
+```
+
+## Understanding sparsity in the DDHC-A File
+
+* The DDHC-A File uses an "adaptive design" that makes certain tables available for specific geographies
+
+![](img/adaptive_design.png){width=800}
+
+## You may see this error...
+
+```{r}
+#| error: true
+
+get_decennial(
+  geography = "county",
+  variables = "T02001_001N",
+  state = "MN",
+  county = "Hennepin",
+  pop_group = "1325",
+  year = 2020,
+  sumfile = "ddhca"
+)
+```
+
+
+## How to check for data availability
+
+* The function `check_ddhca_groups()`, can be used to see which tables to use for the data you want
+
+```{r}
+check_ddhca_groups(
+  geography = "county", 
+  pop_group = "1325", 
+  state = "MN", 
+  county = "Hennepin"
+)
+```
+
+## Mapping DDHC-A data
+
+* Given data sparsity in the DDHC-A data, should you make maps with it?
+
+* I'm not personally a fan of mapping data that are geographically sparse. But...
+
+::: {.incremental}
+* I think it is OK to map DDHC-A data if you think through the data limitations in your map design
+:::
+
+## Example: Somali populations by Census tract in Minneapolis
+
+```{r}
+library(tidycensus)
+
+hennepin_somali <- get_decennial(
+  geography = "tract",
+  variables = "T01001_001N",
+  state = "MN",
+  county = "Hennepin",
+  year = 2020,
+  sumfile = "ddhca",
+  pop_group = "1325",
+  pop_group_label = TRUE,
+  geometry = TRUE
+)
+
+```
+
+---
+
+```{r}
+mapview(hennepin_somali, zcol = "value")
+```
+
+## Alternative approach: dot-density mapping
+
+* I don't think choropleth maps are advisable with geographically incomplete data in most cases
+
+* Other map types - like graduated symbols or dot-density maps - may be more appropriate
+
+* The tidycensus function `as_dot_density()` allows you to specify the number of people represented in each dot, which means you can represent data-suppressed areas as 0 more confidently
+
+---
+
+```{r}
+somali_dots <- as_dot_density(
+  hennepin_somali,
+  value = "value",
+  values_per_dot = 25
+)
+
+mapview(somali_dots, cex = 0.01, layer.name = "Somali population<br>1 dot = 25 people",
+        col.regions = "navy", color = "navy")
+```
+
+# Time-series analysis
+
+## How have areas changed since the 2010 Census?
+
+* A common use-case for the 2020 decennial Census data is to assess change over time
+
+* For example: which areas have experienced the most population growth, and which have experienced the steepest declines?
+
+* __tidycensus__ allows users to access the 2000 and 2010 decennial Census data for comparison, though variable IDs will differ
+
+---
+
+## Getting data from the 2010 Census
+
+```{r get-2010-data}
+#| code-line-numbers: "|3|4|5"
+
+county_pop_10 <- get_decennial(
+  geography = "county",
+  variables = "P001001", 
+  year = 2010,
+  sumfile = "sf1"
+)
+
+```
+
+---
+
+```{r}
+county_pop_10
+```
+
+---
+
+## Cleanup before joining
+
+* The `select()` function can both subset datasets by column and rename columns, "cleaning up" a dataset before joining to another dataset
+
+```{r clean-2010-data}
+#| code-line-numbers: "|2"
+
+county_pop_10_clean <- county_pop_10 %>%
+  select(GEOID, value10 = value) 
+
+county_pop_10_clean
+```
+
+---
+
+## Joining data
+
+* In __dplyr__, joins are implemented with the `*_join()` family of functions
+
+```{r join-data}
+county_pop_20 <- get_decennial(
+  geography = "county",
+  variables = "P1_001N",
+  year = 2020,
+  sumfile = "dhc"
+) %>%
+  select(GEOID, NAME, value20 = value)
+
+county_joined <- county_pop_20 %>%
+  left_join(county_pop_10_clean, by = "GEOID") 
+```
+
+---
+
+```{r show-joined-data}
+county_joined
+```
+
+
+---
+
+## Calculating change
+
+* __dplyr__'s `mutate()` function can be used to calculate new columns, allowing for assessment of change over time
+
+```{r calculate-change}
+#| code-line-numbers: "|2,3,4,5"
+
+county_change <- county_joined %>%
+  mutate( 
+    total_change = value20 - value10, 
+    percent_change = 100 * (total_change / value10) 
+  ) 
+
+```
+
+---
+
+```{r show-change}
+county_change
+```
+
+
+---
+
+## Caveat: changing geographies!
+
+* County names and boundaries can change from year to year, introducing potential problems in time-series analysis
+
+* This is particularly acute for small geographies like Census tracts & block groups, which we'll cover on February 26!
+
+---
+
+```{r show-unmatched-areas}
+filter(county_change, is.na(value10))
+```
+
+# Need data before 2000? Use [NHGIS](https://nhgis.org)
+
+# Thank you!

@@ -1,0 +1,21 @@
+/*-- scss:defaults --*/
+
+$body-bg: #fff;
+$link-color: #1a730f;
+$h1-color: #1a730f;
+
+/*-- scss:rules --*/
+
+.reveal .slide blockquote {
+  border-left: 3px solid $text-muted;
+  padding-left: 0.5em;
+}
+
+.reveal h1 {
+  color: #1a730f !important;
+}
+
+.reveal h2 {
+  color: #1a730f !important;
+}
+

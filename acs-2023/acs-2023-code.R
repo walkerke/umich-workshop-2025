@@ -45,9 +45,9 @@ sd_value <- get_acs(
 
 sd_value
 
-# vars <- load_variables(2023, "acs5")
+vars <- load_variables(2023, "acs5")
 # 
-# View(vars)
+View(vars)
 # 
 
 age_sex_table <- get_acs(
@@ -230,7 +230,7 @@ print(sum(la_age_41$PWGTP))
 
 get_acs("state", "B01003_001", state = "LA", survey = "acs1", year = 2023)
 
-# View(pums_variables)
+View(pums_variables)
 
 la_pums_recoded <- get_pums(
   variables = c("SEX", "AGEP", "HHT"),
@@ -254,6 +254,8 @@ la_pums_filtered <- get_pums(
 )
 
 la_pums_filtered
+
+la_pumas <- arc_read("https://tigerweb.geo.census.gov/arcgis/rest/services/Generalized_TAB2020/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/4", where = "STATE = '22'")
 
 la_age_by_puma <- get_pums(
   variables = c("PUMA", "AGEP"),
@@ -301,3 +303,13 @@ la_age_puma <- get_acs(
   year = 2023,
   survey = "acs1"
 )
+
+
+ct_education <- get_acs(
+  geography = "county",
+  variables = "DP02_0068P",
+  state = "CT",
+  year = 2020,
+  survey = "acs1"
+)
+
