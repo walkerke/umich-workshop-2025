@@ -53,7 +53,7 @@ options(tigris_use_cache = TRUE)
 
 * RStudio: integrated development environment (IDE) for R developed by [Posit](https://posit.co/)
 
-* Posit Cloud: run RStudio with today's workshop pre-configured at <https://posit.cloud/content/7549022>
+* Posit Cloud: run RStudio with today's workshop pre-configured at <https://posit.cloud/content/9689451>
 
 ## What is the decennial US Census?
 
