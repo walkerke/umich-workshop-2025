@@ -15,6 +15,13 @@ pop20 <- get_decennial(
 
 pop20
 
+cd_pop20 <- get_decennial(
+  geography = "state",
+  variables = "P1_001N",
+  year = 2020,
+  sumfile = "cd119"
+)
+
 table_p2 <- get_decennial(
   geography = "state", 
   table = "P2", 
@@ -44,9 +51,9 @@ stl_blocks <- get_decennial(
 
 stl_blocks
 
-# vars <- load_variables(2020, "dhc")
+vars <- load_variables(2020, "dhc")
 # 
-# View(vars)
+View(vars)
 # 
 
 single_year_age <- get_decennial(
@@ -102,9 +109,9 @@ arrange(mo_population, value)
 
 arrange(mo_population, desc(value))
 
-below1000 <- filter(mo_population, value < 1000)
+county_query <- filter(mo_population, value < 10000)
 
-below1000
+county_query
 
 race_vars <- c(
   Hispanic = "P5_010N",
@@ -173,14 +180,16 @@ mapview(wv_over_65, zcol = "value",
         layer.name = "% age 65 and up<br>Census tracts in W. Virginia",
         col.regions = inferno(100))
 
-# library(htmlwidgets)
-# 
-# m1 <- mapview(wv_over_65, zcol = "value",
-#         layer.name = "% age 65 and up<br>Census tracts in W. Virginia",
-#         col.regions = inferno(100))
-# 
-# saveWidget(m1@map, "wv_over_65.html")
-# 
+library(htmlwidgets)
+
+m1 <- mapview(wv_over_65, zcol = "value",
+        layer.name = "% age 65 and up<br>Census tracts in W. Virginia",
+        col.regions = inferno(100))
+
+saveWidget(m1@map, "wv_over_65.html")
+
+ddhca <- load_variables(2020, "ddhca")
+ddhcb <- load_variables(2020, "ddhcb")
 
 mn_population_groups <- get_decennial(
   geography = "state",
@@ -236,7 +245,8 @@ mapview(hennepin_somali, zcol = "value")
 somali_dots <- as_dot_density(
   hennepin_somali,
   value = "value",
-  values_per_dot = 25
+  values_per_dot = 25, 
+  
 )
 
 mapview(somali_dots, cex = 0.01, layer.name = "Somali population<br>1 dot = 25 people",
