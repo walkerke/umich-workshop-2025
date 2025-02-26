@@ -8,7 +8,7 @@ Workshop slides are available from the links below:
 
 * February 12, 2025: [Working with Decennial Census Data in R](https://walker-data.com/umich-workshop-2025/decennial-census/)
 
-* February 26, 2025: Mapping and Spatial Analysis with US Census Data in R
+* February 26, 2025: [Mapping and Spatial Analysis with US Census Data in R](https://walker-data.com/umich-workshop-2025/mapping/#/title-slide)
 
 ---
 
@@ -19,7 +19,7 @@ Workshop slides are available from the links below:
 - Advanced users familiar with R and RStudio should clone the repository to their computers with the command `git clone https://github.com/walkerke/umich-workshop-2025.git`.  They should then install the following R packages, if not already installed:
 
 ```r
-pkgs <- c("tidycensus", "tidyverse", "mapview", "survey", "srvyr", "arcgislayers")
+pkgs <- c("tidycensus", "tidyverse", "mapview", "survey", "srvyr", "arcgislayers", "mapgl")
 
 install.packages(pkgs)
 ```
